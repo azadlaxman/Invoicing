@@ -15,31 +15,36 @@ namespace Invoicing.Controllers
     [Authorize]
     public class AccountController : Controller
     {
+        #region MEMEBER_VARIABLES
         private ApplicationSignInManager _signInManager;
         private ApplicationUserManager _userManager;
-
-        public AccountController()
+        // Used for XSRF protection when adding external logins
+        private const string XsrfKey = "XsrfId";
+        private IAuthenticationManager AuthenticationManager
         {
+            get
+            {
+                return HttpContext.GetOwinContext().Authentication;
+            }
         }
-
-        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
+        private void AddErrors(IdentityResult result)
         {
-            UserManager = userManager;
-            SignInManager = signInManager;
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError("", error);
+            }
         }
-
         public ApplicationSignInManager SignInManager
         {
             get
             {
                 return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
             }
-            private set 
-            { 
-                _signInManager = value; 
+            private set
+            {
+                _signInManager = value;
             }
         }
-
         public ApplicationUserManager UserManager
         {
             get
@@ -51,7 +56,21 @@ namespace Invoicing.Controllers
                 _userManager = value;
             }
         }
+        #endregion
 
+        #region CONSTRUCTORS
+        public AccountController()
+        {
+        }
+
+        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
+        {
+            UserManager = userManager;
+            SignInManager = signInManager;
+        }
+        #endregion
+
+        #region ACTIONS
         //
         // GET: /Account/Login
         [AllowAnonymous]
@@ -120,7 +139,7 @@ namespace Invoicing.Controllers
             // If a user enters incorrect codes for a specified amount of time then the user account 
             // will be locked out for a specified amount of time. 
             // You can configure the account lockout settings in IdentityConfig
-            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent:  model.RememberMe, rememberBrowser: model.RememberBrowser);
+            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent: model.RememberMe, rememberBrowser: model.RememberBrowser);
             switch (result)
             {
                 case SignInStatus.Success:
@@ -155,8 +174,8 @@ namespace Invoicing.Controllers
                 var result = await UserManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
+                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
                     // For more information on how to enable account confirmation and password reset please visit http://go.microsoft.com/fwlink/?LinkID=320771
                     // Send an email with this link
                     // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
@@ -402,7 +421,8 @@ namespace Invoicing.Controllers
         {
             return View();
         }
-
+        #endregion
+        
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -424,25 +444,6 @@ namespace Invoicing.Controllers
         }
 
         #region Helpers
-        // Used for XSRF protection when adding external logins
-        private const string XsrfKey = "XsrfId";
-
-        private IAuthenticationManager AuthenticationManager
-        {
-            get
-            {
-                return HttpContext.GetOwinContext().Authentication;
-            }
-        }
-
-        private void AddErrors(IdentityResult result)
-        {
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError("", error);
-            }
-        }
-
         private ActionResult RedirectToLocal(string returnUrl)
         {
             if (Url.IsLocalUrl(returnUrl))
